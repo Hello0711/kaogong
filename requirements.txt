@@ -10,3 +10,4 @@ notebook
 nbformat
 nbconvert==7.17.1
 ipykernel==7.3.0
+streamlit==1.59.1

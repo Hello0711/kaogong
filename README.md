@@ -24,7 +24,8 @@
 gongkao_analysis/
 ├── src/
 │   ├── build_dataset.py      # 模块1：解压+合并+清洗+特征工程 -> data/clean/positions.parquet
-│   └── build_notebook.py     # 用 nbformat 脚本化组装分析报告 notebook
+│   ├── build_notebook.py     # 用 nbformat 脚本化组装分析报告 notebook
+│   └── app.py                # Streamlit 交互看板（分析可视化 + 职位推荐器）
 ├── notebooks/
 │   └── gongkao_analysis.ipynb  # 主交付物：完整分析报告（含图表与建模）
 ├── data/
@@ -52,6 +53,9 @@ python src/build_notebook.py
 # 4. 执行 notebook 生成带输出的报告
 python -m nbconvert --to notebook --execute --inplace notebooks/gongkao_analysis.ipynb
 # 或直接: jupyter notebook notebooks/gongkao_analysis.ipynb
+
+# 5. 启动 Streamlit 交互看板
+streamlit run src/app.py
 ```
 
 ## 数据字段说明（部分）
