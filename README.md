@@ -34,6 +34,7 @@ gongkao_analysis/
 │   ├── figures/             # 8 张分析图表
 │   └── tables/              # 导出的表格（如最卷岗位 TOP20）
 ├── requirements.txt
+├── 简历要点.md               # 单独整理的简历可写能力关键词与成果
 └── README.md
 ```
 

@@ -72,13 +72,19 @@ df.head(3)
 """)
 
 code(r"""# 关键字段概览
+字段中文名 = {
+    "year": "年份", "exam_type": "考试类型", "province": "省份", "city": "城市",
+    "department_system": "部门系统", "position_name": "职位名称",
+    "major_requirement": "专业要求", "min_degree_name": "最低学历",
+    "employ_count": "招录人数", "enrollment_count": "报名人数",
+    "report_ratio": "报录比", "interview_ratio_num": "面试比例",
+}
 overview = pd.DataFrame({
     "非空数量": df.notna().sum(),
     "缺失率": (df.isna().mean()).round(3),
     "唯一值": df.nunique(),
-}).loc[["year","exam_type","province","city","department_system","position_name",
-        "major_requirement","min_degree_name","employ_count","enrollment_count",
-        "report_ratio","interview_ratio_num"]]
+}).loc[list(字段中文名.keys())].rename(index=字段中文名)
+overview.index.name = "字段"
 overview
 """)
 
@@ -107,7 +113,7 @@ axes[1].set_ylabel("报录比中位数")
 plt.tight_layout()
 plt.savefig(os.path.join(FIG, "01_time_trend.png"), dpi=120, bbox_inches="tight")
 plt.show()
-trend
+trend.rename(columns={"year": "年份", "exam_type": "考试类型"})
 """)
 
 md("""**解读**：可清楚看到招录规模的扩招趋势，以及疫情后「考公热」推动竞争强度的变化。
@@ -129,7 +135,7 @@ ax.set_xlabel("报录比中位数"); ax.set_ylabel("")
 plt.tight_layout()
 plt.savefig(os.path.join(FIG, "02_province_competition.png"), dpi=120, bbox_inches="tight")
 plt.show()
-prov.head(10)
+prov.rename_axis("省份").head(10)
 """)
 
 md("### 2.3 学历门槛与竞争的关系")
@@ -176,6 +182,11 @@ code(r"""hottest = (df[df["report_ratio"].notna() & (df["employ_count"]>=1)]
            .loc[:, ["year","exam_type","province","city","department","position_name",
                      "employ_count","enrollment_count","report_ratio"]]
            .head(20).reset_index(drop=True))
+hottest = hottest.rename(columns={
+    "year": "年份", "exam_type": "考试类型", "province": "省份", "city": "城市",
+    "department": "招录部门", "position_name": "职位名称",
+    "employ_count": "招录人数", "enrollment_count": "报名人数", "report_ratio": "报录比",
+})
 hottest.to_csv(os.path.join(TAB, "top20_hottest_positions.csv"), index=False, encoding="utf-8-sig")
 hottest
 """)
@@ -263,15 +274,20 @@ top_sys = model_df["department_system"].value_counts().head(30).index
 model_df["dep_sys"] = np.where(model_df["department_system"].isin(top_sys),
                                 model_df["department_system"], "其他")
 
-cat_features = ["exam_type", "province", "dep_sys", "min_degree_name"]
-num_features = ["year", "employ_count", "major_unlimited", "major_term_count",
-                "degree_open_upward", "interview_ratio_num"]
+cat_features = ["考试类型", "省份", "部门系统", "最低学历"]
+num_features = ["年份", "招录人数", "是否不限专业", "专业数量", "学历及以上", "面试比例"]
+特征映射 = {
+    "exam_type": "考试类型", "province": "省份", "dep_sys": "部门系统",
+    "min_degree_name": "最低学历", "year": "年份", "employ_count": "招录人数",
+    "major_unlimited": "是否不限专业", "major_term_count": "专业数量",
+    "degree_open_upward": "学历及以上", "interview_ratio_num": "面试比例",
+}
 
-X = model_df[cat_features + num_features].copy()
+X = model_df[list(特征映射.keys())].rename(columns=特征映射).copy()
 for c in cat_features:
     X[c] = X[c].fillna("未知").astype("category")
-X["interview_ratio_num"] = X["interview_ratio_num"].fillna(X["interview_ratio_num"].median())
-X["degree_open_upward"] = X["degree_open_upward"].fillna(0)
+X["面试比例"] = X["面试比例"].fillna(X["面试比例"].median())
+X["学历及以上"] = X["学历及以上"].fillna(0)
 y = model_df["y"]
 print(f"建模样本: {len(X):,} 行, 特征数: {X.shape[1]}")
 print(f"报录比截尾上限(p99): {cap:.1f}")
@@ -378,18 +394,17 @@ code(r"""def recommend_positions(major_keyword=None, degree="本科", province=N
         return pd.DataFrame({"提示": ["无匹配岗位，请放宽条件"]})
 
     # 用模型预测竞争强度
-    top_sys_local = cand["department_system"].value_counts().head(30).index
     feat = pd.DataFrame({
-        "exam_type": cand["exam_type"],
-        "province": cand["province"],
-        "dep_sys": np.where(cand["department_system"].isin(top_sys), cand["department_system"], "其他"),
-        "min_degree_name": cand["min_degree_name"].fillna("未知"),
-        "year": cand["year"],
-        "employ_count": cand["employ_count"].fillna(1),
-        "major_unlimited": cand["major_unlimited"],
-        "major_term_count": cand["major_term_count"],
-        "degree_open_upward": cand["degree_open_upward"].fillna(0),
-        "interview_ratio_num": cand["interview_ratio_num"].fillna(3),
+        "考试类型": cand["exam_type"],
+        "省份": cand["province"],
+        "部门系统": np.where(cand["department_system"].isin(top_sys), cand["department_system"], "其他"),
+        "最低学历": cand["min_degree_name"].fillna("未知"),
+        "年份": cand["year"],
+        "招录人数": cand["employ_count"].fillna(1),
+        "是否不限专业": cand["major_unlimited"],
+        "专业数量": cand["major_term_count"],
+        "学历及以上": cand["degree_open_upward"].fillna(0),
+        "面试比例": cand["interview_ratio_num"].fillna(3),
     })
     for c in cat_features:
         feat[c] = feat[c].astype("category")
@@ -397,7 +412,10 @@ code(r"""def recommend_positions(major_keyword=None, degree="本科", province=N
     out = (cand.sort_values("预测报录比")
            .loc[:, ["province","city","department","position_name",
                      "major_requirement","min_degree_name","employ_count","预测报录比"]]
-           .head(top_n).reset_index(drop=True))
+           .head(top_n).reset_index(drop=True)
+           .rename(columns={"province": "省份", "city": "城市", "department": "招录部门",
+                            "position_name": "职位名称", "major_requirement": "专业要求",
+                            "min_degree_name": "最低学历", "employ_count": "招录人数"}))
     out["预测报录比"] = out["预测报录比"].round(1)
     return out
 
@@ -418,13 +436,6 @@ md("""## 结论与项目亮点
 3. **不限专业 = 高竞争**：「不限专业」岗位报录比中位数远高于限定专业岗位，是「千军万马」的主战场。
 4. **岗位机会结构**：财会、法学、计算机、经济类等专业岗位需求量最大，专业越对口选择面越广。
 5. **可预测性**：仅用报名前可知特征即可对竞争强度做出有意义的预测，招录人数、省份、部门系统、专业限制是最关键因素。
-
-### 简历可写的能力关键词
-- **数据工程**：83 万行多源异构数据合并清洗、编码/比例字段解析、特征工程（报录比等）。
-- **数据分析与可视化**：多维透视分析 + Matplotlib/Seaborn 商业图表。
-- **NLP**：jieba 中文分词、自由文本结构化、词频/机会度量化。
-- **机器学习**：无泄漏建模、梯度提升回归、排列重要性解释、模型落地为推荐工具。
-- **工程化**：脚本化可复现 pipeline（数据脚本 + nbformat 组装 notebook）。
 """)
 
 # ============================================================================
