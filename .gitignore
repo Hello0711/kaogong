@@ -1,0 +1,17 @@
+# 数据文件（可由 src/build_dataset.py 从 gongkao.7z 重新生成）
+data/raw/
+data/clean/
+
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
